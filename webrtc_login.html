@@ -1,0 +1,230 @@
+<html>
+<head>
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="peer.min.js"></script>
+	<script type="text/javascript">
+
+var socket = null; 
+var my_stream = null; /* Get User Media */
+	var peer_id = null; 	// Hold on to our id from PeerJS
+	var peer = null;
+	var lists = []; // checkboxes
+	var labels = []; // checkbox labels items
+	var people = []; // peerID will be store here
+
+	window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
+	navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+	// Navigator.getUserMedia() method prompts the user for permission to use video or audio
+	// navigator.getUserMedia(constraints, successCallback, errorCallback);
+	// When successful, the successCallback is invoked with the resulting MediaStream object as its argment
+	// MediaStream object contains 'stream'
+		
+	if (navigator.getUserMedia) {
+		navigator.getUserMedia({video: true, audio: true}, function(stream) {
+			my_stream = stream;
+			var videoElement = document.getElementById('myvideo');
+			videoElement.src = window.URL.createObjectURL(stream) || stream;
+			videoElement.play();
+			var t = document.createTextNode("This site is under construction.");
+
+			connectPeer();
+
+		}, function(err) {
+			console.log('Failed to get local stream' ,err);
+		});
+	}
+
+	function connectPeer() {
+		// Register for an API Key:	http://peerjs.com/peerserver
+		//var peer = new Peer({key: '7ifmum8rcw61or'});
+		//peer = new Peer({host: '104.131.82.13', port: 9000, path: '/'});
+
+		//Create 'peer' object through 'Peer' constructor
+		peer = new Peer({host: 'liveweb.itp.io', port: 9000, path: '/'});
+
+		// Get an ID from the PeerJS server	
+		// When it's open, Every Peer object is assigned a random/unique ID	
+		peer.on('open', function(id) {
+			console.log('My peer ID is: ' + id);
+			peer_id = id;
+
+			socket = io.connect();
+
+			socket.on('connect', function() {
+				console.log("'connect' event invoked");
+				socket.emit('peerid',peer_id);
+			});
+
+			socket.on('peerid',function(data) {
+				console.log("This is data passed on to makeCall function:" + data);
+				
+				// Create checkbox when there is a new connection
+				//createCheckbox(data);
+
+				// peer ID is store in 'people' array
+				people.push(data);
+				console.log("This is people array list: " + people);
+
+/*
+				//if checkbox is checked, make call to show video
+				document.getElementById(data).onclick = function (){
+					if (this.checked) {
+						makeCall(data);
+						socket.emit('click', data); // Tell server it's checked
+						socket.emit('video',data); // Tell server video is on
+						//var videoshown = true;
+						//setTimeout(showTimer(), 1000);
+					}
+					//else if ((this.checked == false) && (videoshown == true)) {
+						else if (this.checked == false) {
+							console.log("video uncheck recognized");
+							console.log(data);			
+							removeVideo(data);
+						//videoshown = false;
+					} 
+				};
+*/
+				////if already checked when window is open, load video
+				//if (document.getElementById(data).checked) {
+				//};
+
+			});
+
+/*
+socket.on('click', function(data) { 
+	if(lists.getElementById(data).checked){
+		makeCall(data);
+		console.log("I'm catching up");
+	};
+});
+*/
+			/*
+			socket.on('video', function(data) { 
+			//document.getElementById(data).checked
+			makeCall(data);
+			});
+*/
+			//disconnect
+			socket.on('disconnect',function(data){
+				console.log("Disconnecting data peer: " + data); 
+				//socket.emit('clients', data);
+				//deleteCheckbox(data);
+				//console.log('DATA', data);
+				
+				/*
+				//Remove checkbox  
+				var parentlist = document.getElementById("checkbox");
+				var childlist = document.querySelector('.label-' + data);
+				console.log("Parent node: " + parentlist);
+				console.log("Delete this child node: " + childlist);
+				if (childlist) parentlist.removeChild(childlist);
+*/
+				//removeVideo(data);
+/*
+				//Remove video
+				var videoToRemove = document.getElementById(data);
+				console.log(videoToRemove);	
+				videoToRemove.parentNode.removeChild(videoToRemove);
+				*/
+			});
+		});
+
+peer.on('error', function(err) { 
+	console.log(err);
+});
+
+peer.on('call', function(incoming_call) {
+	console.log("Incoming call: 'call' event invoked by: " + incoming_call);
+			// Answer the call with our stream from getUserMedia
+			incoming_call.answer(my_stream); 
+			incoming_call.on('stream', function(remoteStream) {  // we receive a getUserMedia stream from the remote caller and attach it to a video object
+				console.log("I'm getting stream from an incoming caller");
+			
+			/*		
+				var ovideoElement = document.createElement('video');
+				ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+				ovideoElement.setAttribute("autoplay", "true");		
+				ovideoElement.play();
+				document.body.appendChild(ovideoElement);
+			*/
+			});
+		});
+}
+
+function makeCall(idToCall) {
+	console.log("makeCall function called")
+	console.log("idToCall:" + idToCall);
+		//people.push(idToCall);
+		//var idToCall = document.getElementById('tocall').value;
+
+		console.log("this ID was checked by peer: " + peer);
+
+		var call = peer.call(idToCall, my_stream);
+		console.log("made a call: " + call);
+		console.log(idToCall);
+		/*
+		call.on('stream', function(remoteStream) {
+			console.log("Got remote stream");
+			ovideoElement = document.createElement('video');
+			ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+			ovideoElement.setAttribute("autoplay", "true");
+			ovideoElement.setAttribute("id", idToCall);
+			ovideoElement.className = 'movie-' + idToCall;
+			ovideoElement.play();
+			document.body.appendChild(ovideoElement);
+		});
+*/
+	}
+/*
+	function createCheckbox(pid){
+		var label = document.createElement('label');
+		label.className = 'label-' + pid;
+
+		var p1 = document.getElementById("checkbox");
+
+		// List out connected peerIDs in checkboxes
+		lists = document.createElement("INPUT");
+		lists.setAttribute("type", "checkbox");
+		lists.id = pid;
+
+		labels = document.createTextNode(pid);
+		labels.htmlFor = pid;
+		
+		label.appendChild(lists);
+		label.appendChild(labels);
+
+		p1.appendChild(label);
+	}
+*/
+
+	// for clients
+	function deleteCheckbox(pid){
+		var cbTOremove = document.getElementById(pid);
+		document.body.removeChild(cbTOremove);
+	}
+
+	//remove video
+	function removeVideo(pid){
+		//var videoToDelete = document.getElementById(pid);
+		//document.body.removeChild(videoToDelete);
+
+		//var videoToRemove = document.getElementById(pid);
+		var videoToRemove = document.querySelector('.movie-' + pid);
+		console.log(videoToRemove);	
+		videoToRemove.parentNode.removeChild(videoToRemove);
+	}
+
+	function showTimer(){
+		//var time = 120;
+		//document.body.createElement();
+	}
+	</script>
+</head>
+<body>
+	<!-- <video id="myvideo" width="320" height="240"></video> -->
+	<br /><br />
+	<!-- <form id = "checkbox"> -->
+	</form>
+</body>
+</html>
